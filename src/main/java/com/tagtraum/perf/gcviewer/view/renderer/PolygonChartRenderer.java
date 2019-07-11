@@ -23,7 +23,7 @@ public abstract class PolygonChartRenderer extends ChartRenderer {
     private boolean drawPolygon;
     private Paint fillPaint;
     private Polygon polygon;
-    private Polygon clippedPolygon = new Polygon();
+    protected Polygon clippedPolygon = new Polygon();
 
     public PolygonChartRenderer(ModelChartImpl modelChart) {
         super(modelChart);
@@ -285,11 +285,11 @@ public abstract class PolygonChartRenderer extends ChartRenderer {
             addPoint(getScaledXValue(x), getScaledYValue(y));
         }
 
-        private int getScaledXValue(double x) {
+        public int getScaledXValue(double x) {
             return (int)(xScaleFactor * x);
         }
 
-        private int getScaledYValue(double y) {
+        public int getScaledYValue(double y) {
             return yOffset - (int)(yScaleFactor * y);
         }
 
