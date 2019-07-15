@@ -66,7 +66,7 @@ public class Export extends AbstractAction {
                     fileFilter = (ExportExtensionFileFilter) saveDialog.getChoosableFileFilters()[0];
                 }
                 exportFile(chartPanelView.getGCResource().getModel(),
-                        saveDialog.getSelectedFile(), 
+                        saveDialog.getSelectedFile(),
                         fileFilter.getExtension(),
                         fileFilter.getDataWriterType());
             }
@@ -104,7 +104,8 @@ public class Export extends AbstractAction {
             new ExportExtensionFileFilter("txt", LocalisationHelper.getString("fileexport_dialog_txt"), DataWriterType.PLAIN),
             new ExportExtensionFileFilter("simple.log", LocalisationHelper.getString("fileexport_dialog_simplelog"), DataWriterType.SIMPLE),
             new ExportExtensionFileFilter("csv", LocalisationHelper.getString("fileexport_dialog_summarylog"), DataWriterType.SUMMARY),
-            new ExportExtensionFileFilter("png", LocalisationHelper.getString("fileexport_dialog_png"), DataWriterType.PNG)        
+            new ExportExtensionFileFilter("png", LocalisationHelper.getString("fileexport_dialog_png"), DataWriterType.PNG),
+            new ExportExtensionFileFilter("csv", LocalisationHelper.getString("fileexport_dialog_heaplog"), DataWriterType.HEAP)
         };
 
         private final String description;
@@ -128,14 +129,14 @@ public class Export extends AbstractAction {
         public DataWriterType getDataWriterType() {
             return dataWriterType;
         }
-        
+
         @Override
         public String toString() {
             StringBuilder sb = new StringBuilder(super.toString());
             sb.append("\ntype=").append(dataWriterType);
             sb.append("; extension=").append(extension);
             sb.append("; description=").append(description);
-            
+
             return sb.toString();
         }
     }

@@ -54,6 +54,7 @@ public class DataWriterFactory {
             case SIMPLE  : return new SimpleGcWriter(outputStream);
             case SUMMARY : return new SummaryDataWriter(outputStream, configuration);
             case PNG     : return new PNGDataWriter(outputStream);
+            case HEAP    : return new HeapDataWriter(outputStream);
             default : throw new IOException(LocalisationHelper.getString("datawriterfactory_instantiation_failed") + " " + file);
         }
     }
