@@ -14,6 +14,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -49,6 +51,10 @@ public class GCViewer {
     public int doMain(String[] args) throws InvocationTargetException, InterruptedException {
         GCViewerArgsParser argsParser = gcViewerArgsParser;
         try {
+            if ((new ArrayList<String>(Arrays.asList(args))).indexOf("-h") != -1) {
+                usage();
+                return EXIT_OK;
+            }
             argsParser.parseArguments(args);
         }
         catch (GCViewerArgsParserException e) {
