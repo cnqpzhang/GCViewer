@@ -17,7 +17,7 @@ import java.util.Iterator;
  * ParO-Pre(K),ParO-Post(K),ParO-Total(K),
  * Meta-Pre(K),Meta-Post(K),Meta-Total(K),
  * Used(K),Total(K),
- * Pause(ms),GC-Type"} format.
+ * Pause(ms),GC-Type,User(s),Sys(s),Real(s)"} format.
  *
  * @author <a href="mailto:patrick.zhang@amperecomputing.com">Patrick Zhang</a>
  */
@@ -33,7 +33,7 @@ public class HeapDataWriter extends AbstractDataWriter {
                 "ParO-Pre(K),ParO-Post(K),ParO-Total(K)," +
                 "Meta-Pre(K),Meta-Post(K),Meta-Total(K)," +
                 "Used(K),Total(K)," +
-                "Pause(ms),GC-Type");
+                "Pause(ms),GC-Type,User(s),Sys(s),Real(s)");
     }
 
     /**
@@ -98,6 +98,12 @@ public class HeapDataWriter extends AbstractDataWriter {
                 out.print(e.getExtendedType() != null ?
                         e.getExtendedType().getName() :
                         AbstractGCEvent.ExtendedType.UNDEFINED);
+                out.print(',');
+                out.print(e.getWtUser());
+                out.print(',');
+                out.print(e.getWtSys());
+                out.print(',');
+                out.print(e.getWtReal());
                 out.println();
             }
         }

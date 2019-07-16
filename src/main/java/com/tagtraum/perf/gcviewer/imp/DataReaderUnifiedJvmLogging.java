@@ -59,7 +59,7 @@ public class DataReaderUnifiedJvmLogging extends AbstractDataReader {
     // Regex: ^(?:\[(?<time>[0-9-T:.+]*)])?(?:\[(?<uptime>[^s]*)s])?\[(?<level>[^]]+)]\[(?:(?<tags>[^] ]+)[ ]*)][ ]GC\((?<gcnumber>[0-9]+)\)[ ](?<type>([-.a-zA-Z ()]+|[a-zA-Z1 ()]+))(?:(?:[ ](?<tail>[0-9]{1}.*))|$)
     //   note for the <type> part: easiest would have been to use [^0-9]+, but the G1 events don't fit there, because of the number in their name
     private static final Pattern PATTERN_DECORATORS = Pattern.compile(
-            "^(?:\\[(?<time>[0-9-T:.+]*)])?(?:\\[(?<uptime>[^s]*)s])?\\[(?<level>[^]]+)]\\[(?:(?<tags>[^] ]+)[ ]*)][ ]GC\\((?<gcnumber>[0-9]+)\\)[ ](?<type>(?:Phase [0-9]{1}: [a-zA-Z ]+)|[-.a-zA-Z: ()]+|[a-zA-Z1 ()]+)(?:(?:[ ](?<tail>[0-9]{1}.*))|$)"
+            "^(?:\\[(?<time>[0-9-T:.+]*)])?(?:\\[(?<uptime>[^s]*)s])?\\[(?<level>[^]]+)]\\[(?:(?<tags>[^] ]+)[ ]*)][ ]GC\\((?<gcnumber>[0-9]+)\\)[ ](?<type>(?:Phase [0-9]{1}: [a-zA-Z ]+)|[-.a-zA-Z: ()]+|[a-zA-Z1 ()]+|(?:User))(?:(?:[ =](?<tail>[0-9]{1}.*))|$)"
     );
     private static final String GROUP_DECORATORS_TIME = "time";
     private static final String GROUP_DECORATORS_UPTIME = "uptime";
@@ -77,6 +77,9 @@ public class DataReaderUnifiedJvmLogging extends AbstractDataReader {
 
     private static final String PATTERN_HEAP_MEMORY_PERCENTAGE_STRING = "(([0-9]+)([BKMG])[ ](\\([0-9]+%\\)))";
     private static final String PATTERN_MEMORY_PERCENTAGE_STRING = "(([0-9]+)([BKMG])\\(([0-9]+)%\\)->([0-9]+)([BKMG])\\(([0-9]+)%\\))";
+
+    // 0.03s Sys=0.01s Real=0.02s
+    private static final String PATTERN_WALL_TIME_STRING = "(([0-9]+[.,][0-9]+)s Sys=([0-9]+[.,][0-9]+)s Real=([0-9]+[.,][0-9]+)s)";
 
     // Input: 1.070ms
     // Group 1: 1.070
@@ -151,14 +154,26 @@ public class DataReaderUnifiedJvmLogging extends AbstractDataReader {
     private static final int GROUP_HEAP_MEMORY_PERCENTAGE_VALUE = 2;
     private static final int GROUP_HEAP_MEMORY_PERCENTAGE_UNIT = 3;
 
+    // Input: 0.03s Sys=0.01s Real=0.02s
+    // Group 1: 0.03
+    // Group 2: 0.01
+    // Group 3: 0.02
+    private static final Pattern PATTERN_WALL_TIME = Pattern.compile("^" + PATTERN_WALL_TIME_STRING);
+
+    private static final int GROUP_WALL_TIME = 1;
+    private static final int GROUP_WALL_TIME_USER = 2;
+    private static final int GROUP_WALL_TIME_SYS = 3;
+    private static final int GROUP_WALL_TIME_REAL = 4;
+
     private static final String TAG_GC = "gc";
     private static final String TAG_GC_START = "gc,start";
     private static final String TAG_GC_HEAP = "gc,heap";
     private static final String TAG_GC_METASPACE = "gc,metaspace";
     private static final String TAG_GC_PHASES = "gc,phases";
+    private static final String TAG_GC_CPU = "gc,cpu";
     
     /** list of strings, that must be part of the gc log line to be considered for parsing */
-    private static final List<String> INCLUDE_STRINGS = Arrays.asList("[gc ", "[gc]", "[" + TAG_GC_START, "[" + TAG_GC_HEAP, "[" + TAG_GC_METASPACE, "[" + TAG_GC_PHASES);
+    private static final List<String> INCLUDE_STRINGS = Arrays.asList("[gc ", "[gc]", "[" + TAG_GC_START, "[" + TAG_GC_HEAP, "[" + TAG_GC_METASPACE, "[" + TAG_GC_PHASES, "[" + TAG_GC_CPU);
     /** list of strings, that target gc log lines, that - although part of INCLUDE_STRINGS - are not considered a gc event */
     private static final List<String> EXCLUDE_STRINGS = Arrays.asList("Cancelling concurrent GC", "[debug", "[trace", "gc,heap,coops", "gc,heap,exit", "[gc,phases,start");
     /** list of strings, that are gc log lines, but not a gc event -&gt; should be logged only */
@@ -232,6 +247,9 @@ public class DataReaderUnifiedJvmLogging extends AbstractDataReader {
             case TAG_GC:
                 returnEvent = handleTagGcTail(context, event, tail);
                 break;
+            case TAG_GC_CPU:
+                returnEvent = handleTagGcCpuTail(context, event, tail);
+                break;
             case TAG_GC_PHASES:
             	returnEvent = handleTagGcPhasesTail(context, event, tail);
             	break;
@@ -289,7 +307,8 @@ public class DataReaderUnifiedJvmLogging extends AbstractDataReader {
                 parentEvent.setDateStamp(event.getDatestamp());
                 parentEvent.setTimestamp(event.getTimestamp());
                 returnEvent = parseTail(context, parentEvent, tail);
-                context.partialEventsMap.remove(event.getNumber() + "");
+                // let handleTagGcCpuTail take the final action
+                // context.partialEventsMap.remove(event.getNumber() + "");
             } else {
                 // more detail information is provided for the parent event
                 updateEventDetails(context, returnEvent);
@@ -299,6 +318,20 @@ public class DataReaderUnifiedJvmLogging extends AbstractDataReader {
             returnEvent = parseTail(context, event, tail);
         }
 
+        return returnEvent;
+    }
+
+    private AbstractGCEvent<?> handleTagGcCpuTail(ParseContext context, AbstractGCEvent<?> event, String tail) {
+        AbstractGCEvent<?> returnEvent = event;
+        AbstractGCEvent<?> parentEvent = context.getPartialEventsMap().get(event.getNumber() + "");
+        if (event.getExtendedType().getType().equals(Type.UJL_WALL_TIME) && parentEvent != null) {
+            returnEvent = parseTail(context, event, tail);
+            parentEvent.setWtUser(returnEvent.getWtUser());
+            parentEvent.setWtSys(returnEvent.getWtSys());
+            parentEvent.setWtReal(returnEvent.getWtReal());
+            context.partialEventsMap.remove(event.getNumber() + "");
+            returnEvent = null;
+        }
         return returnEvent;
     }
 
@@ -344,6 +377,8 @@ public class DataReaderUnifiedJvmLogging extends AbstractDataReader {
             parseGcMemoryPercentageTail(context, event, tail);
         } else if (event.getExtendedType().getPattern().equals(GcPattern.GC_HEAP_MEMORY_PERCENTAGE)) {
             parseGcHeapMemoryPercentageTail(context, event, tail);
+        }else if (event.getExtendedType().getPattern().equals(GcPattern.GC_WALL_TIME)) {
+            parseGcWallTimeTail(context, event, tail);
         }
 
         return event;
@@ -412,7 +447,7 @@ public class DataReaderUnifiedJvmLogging extends AbstractDataReader {
             getLogger().warning(String.format("Expected region information in the end of line number %d (line=\"%s\")", in.getLineNumber(), context.getLine()));
         }
     }
-    
+
     private void parseGcMemoryPercentageTail(ParseContext context, AbstractGCEvent<?> event, String tail) {
         Matcher memoryPercentageMatcher = tail != null ? PATTERN_MEMORY_PERCENTAGE.matcher(tail) : null;
         if (memoryPercentageMatcher != null && memoryPercentageMatcher.find()) {
@@ -435,7 +470,18 @@ public class DataReaderUnifiedJvmLogging extends AbstractDataReader {
             getLogger().warning(String.format("Expected heap memory percentage in the end of line number %d (line=\"%s\")", in.getLineNumber(), context.getLine()));
         }
     }
-
+    private void parseGcWallTimeTail(ParseContext context, AbstractGCEvent<?> event, String tail) {
+        if (tail != null) {
+            Matcher wtMatcher = PATTERN_WALL_TIME.matcher(tail);
+            if (wtMatcher.find()) {
+                event.setWtUser(NumberParser.parseDouble(wtMatcher.group(GROUP_WALL_TIME_USER)));
+                event.setWtSys(NumberParser.parseDouble(wtMatcher.group(GROUP_WALL_TIME_SYS)));
+                event.setWtReal(NumberParser.parseDouble(wtMatcher.group(GROUP_WALL_TIME_REAL)));
+            } else {
+                getLogger().warning(String.format("Expected only wall times in the end of line number %d  (line=\"%s\")", in.getLineNumber(), context.getLine()));
+            }
+        }
+    }
     /**
      * Returns an instance of AbstractGcEvent (GCEvent or ConcurrentGcEvent) with all decorators present filled in
      * or <code>null</code> if the line could not be matched.

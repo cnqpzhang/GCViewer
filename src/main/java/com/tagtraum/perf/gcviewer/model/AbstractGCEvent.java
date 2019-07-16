@@ -37,6 +37,7 @@ public abstract class AbstractGCEvent<T extends AbstractGCEvent<T>> implements S
     private double pause;
     private int number = -1;
     private List<AbstractGCEvent<?>> phases;
+    private double wtUser, wtSys, wtReal;
 
     public Iterator<T> details() {
         if (details == null) return Collections.emptyIterator();
@@ -325,6 +326,30 @@ public abstract class AbstractGCEvent<T extends AbstractGCEvent<T>> implements S
         return getExtendedType().getPattern().equals(GcPattern.GC_MEMORY_PAUSE)
                 || getExtendedType().getPattern().equals(GcPattern.GC_PAUSE)
                 || getExtendedType().getPattern().equals(GcPattern.GC_PAUSE_DURATION);
+    }
+
+    public double getWtUser() {
+        return wtUser;
+    }
+
+    public void setWtUser(double wtUser) {
+        this.wtUser = wtUser;
+    }
+
+    public double getWtSys() {
+        return wtSys;
+    }
+
+    public void setWtSys(double wtSys) {
+        this.wtSys = wtSys;
+    }
+
+    public double getWtReal() {
+        return wtReal;
+    }
+
+    public void setWtReal(double wtReal) {
+        this.wtReal = wtReal;
     }
 
     public double getPause() {
@@ -635,6 +660,7 @@ public abstract class AbstractGCEvent<T extends AbstractGCEvent<T>> implements S
         // unified jvm logging generic event types
         public static final Type UJL_PAUSE_YOUNG = new Type("Pause Young", Generation.YOUNG, Concurrency.SERIAL, GcPattern.GC_MEMORY_PAUSE);
         public static final Type UJL_PAUSE_FULL = new Type("Pause Full", Generation.ALL, Concurrency.SERIAL, GcPattern.GC_MEMORY_PAUSE);
+        public static final Type UJL_WALL_TIME = new Type("User", Generation.ALL, Concurrency.SERIAL, GcPattern.GC_WALL_TIME);
 
         // unified jvm logging serial / cms event phase types
         public static final Type UJL_SERIAL_PHASE_MARK_LIFE_OBJECTS = new Type("Phase 1: Mark live objects", Generation.YOUNG, Concurrency.SERIAL, GcPattern.GC_PAUSE);
@@ -752,7 +778,9 @@ public abstract class AbstractGCEvent<T extends AbstractGCEvent<T>> implements S
         /** "Garbage Collection (Reason)" "memory before"("percentage of total")-&gt;"memory after"("percentage of total") */
         GC_MEMORY_PERCENTAGE,
         /** "Heap memory type" "memory current"("memory percentage") */
-        GC_HEAP_MEMORY_PERCENTAGE
+        GC_HEAP_MEMORY_PERCENTAGE,
+        /** "GC wall time": "user time, system time, real time" */
+        GC_WALL_TIME
     }
 
     public enum Concurrency { CONCURRENT, SERIAL }

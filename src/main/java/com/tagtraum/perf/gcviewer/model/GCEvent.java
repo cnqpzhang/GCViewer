@@ -165,7 +165,17 @@ public class GCEvent extends AbstractGCEvent<GCEvent> {
         sb.append(getTotal());
         sb.append("K), ");
         sb.append(getPause());
-        sb.append(" secs]");
+        sb.append(" secs");
+        if (getExtendedType() != null && getExtendedType().getType().equals(Type.UJL_WALL_TIME)){
+            sb.append(", User=");
+            sb.append(getWtUser());
+            sb.append("s, Sys=");
+            sb.append(getWtSys());
+            sb.append("s, Real=");
+            sb.append(getWtReal());
+            sb.append("s");
+        }
+        sb.append("]");
     }
 
     @Override
