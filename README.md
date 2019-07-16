@@ -12,9 +12,9 @@ You can start GCViewer (gui) by simply double-clicking on gcviewer-1.3x.jar
 or running java -jar gcviewer-1.3x.jar (it needs a java 1.8 vm to run).
 
 For a cmdline based report summary just type the following to generate a report (including optional chart image file): 
-`java -jar gcviewer-1.3x.jar gc.log summary.csv [chart.png] [-t PLAIN|CSV|CSV_TS|SIMPLE|SUMMARY]`
+`java -jar gcviewer-1.3x.jar gc.log summary.csv [chart.png] [-t PLAIN|CSV|CSV_TS|SIMPLE|SUMMARY|PNG|HEAP]`
 When logfile rotation (-XX:+UseGCLogFileRotation) is enabled, the logfiles can be read at once: 
-`java -jar gcviewer-1.3x.jar gc.log.0;gc.log.1;gc.log.2;gc.log.current summary.csv [chart.png] [-t PLAIN|CSV|CSV_TS|SIMPLE|SUMMARY]`
+`java -jar gcviewer-1.3x.jar gc.log.0;gc.log.1;gc.log.2;gc.log.current summary.csv [chart.png] [-t PLAIN|CSV|CSV_TS|SIMPLE|SUMMARY|PNG|HEAP]`
 
 
 Supported verbose:gc formats are:
@@ -386,6 +386,12 @@ This format is compatible with gchisto (http://java.net/projects/gchisto)
 
 **SUMMARY**
 Detailed summary exporting all details about a gc log file (same as shown in data panel). 
+
+**PNG**
+Export the PNG result based on selected views
+
+**HEAP**
+Export detailed changes of the GC relevant heaps in CSV format.
 
 Internationalization
 --------------------
