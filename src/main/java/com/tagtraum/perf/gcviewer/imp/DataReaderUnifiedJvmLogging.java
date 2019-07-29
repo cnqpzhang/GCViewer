@@ -74,6 +74,7 @@ public class DataReaderUnifiedJvmLogging extends AbstractDataReader {
 
     private static final String PATTERN_PAUSE_STRING = "([0-9]+[.,][0-9]+)ms";
     private static final String PATTERN_MEMORY_STRING = "(([0-9]+)([BKMG])->([0-9]+)([BKMG])\\(([0-9]+)([BKMG])\\))";
+    private static final String PATTERN_MEMORY_2_STRING = "(([0-9]+)([BKMG])\\([0-9]+[BKMG]\\)->([0-9]+)([BKMG])\\(([0-9]+)([BKMG])\\)).*";
 
     private static final String PATTERN_HEAP_MEMORY_PERCENTAGE_STRING = "(([0-9]+)([BKMG])[ ](\\([0-9]+%\\)))";
     private static final String PATTERN_MEMORY_PERCENTAGE_STRING = "(([0-9]+)([BKMG])\\(([0-9]+)%\\)->([0-9]+)([BKMG])\\(([0-9]+)%\\))";
@@ -95,6 +96,15 @@ public class DataReaderUnifiedJvmLogging extends AbstractDataReader {
     // Group 5: 4998
     // Group 6: M
     private static final Pattern PATTERN_MEMORY = Pattern.compile("^" + PATTERN_MEMORY_STRING);
+
+    // Input: Metaspace: 20659K(21632K)->20659K(21632K) NonClass: 18482K(19200K)->18482K(19200K) Class: 2176K(2432K)->2176K(2432K)
+    // Group 1: 20659K
+    // Group 2: K
+    // Group 3: 20659
+    // Group 4: K
+    // Group 5: 21632
+    // Group 6: K
+    private static final Pattern PATTERN_MEMORY_2 = Pattern.compile("^" + PATTERN_MEMORY_2_STRING);
 
     // Input: 4848M->4855M(4998M) 2.872ms
     // Group 1: 4848
@@ -134,7 +144,7 @@ public class DataReaderUnifiedJvmLogging extends AbstractDataReader {
     // Group 6: M
     // Group 7: 0%
     private static final Pattern PATTERN_MEMORY_PERCENTAGE = Pattern.compile("^" + PATTERN_MEMORY_PERCENTAGE_STRING);
-    
+
     private static final int GROUP_MEMORY_PERCENTAGE = 1;
     private static final int GROUP_MEMORY_PERCENTAGE_BEFORE = 2;
     private static final int GROUP_MEMORY_PERCENTAGE_BEFORE_UNIT = 3;
@@ -171,7 +181,7 @@ public class DataReaderUnifiedJvmLogging extends AbstractDataReader {
     private static final String TAG_GC_METASPACE = "gc,metaspace";
     private static final String TAG_GC_PHASES = "gc,phases";
     private static final String TAG_GC_CPU = "gc,cpu";
-    
+
     /** list of strings, that must be part of the gc log line to be considered for parsing */
     private static final List<String> INCLUDE_STRINGS = Arrays.asList("[gc ", "[gc]", "[" + TAG_GC_START, "[" + TAG_GC_HEAP, "[" + TAG_GC_METASPACE, "[" + TAG_GC_PHASES, "[" + TAG_GC_CPU);
     /** list of strings, that target gc log lines, that - although part of INCLUDE_STRINGS - are not considered a gc event */
@@ -377,7 +387,7 @@ public class DataReaderUnifiedJvmLogging extends AbstractDataReader {
             parseGcMemoryPercentageTail(context, event, tail);
         } else if (event.getExtendedType().getPattern().equals(GcPattern.GC_HEAP_MEMORY_PERCENTAGE)) {
             parseGcHeapMemoryPercentageTail(context, event, tail);
-        }else if (event.getExtendedType().getPattern().equals(GcPattern.GC_WALL_TIME)) {
+        } else if (event.getExtendedType().getPattern().equals(GcPattern.GC_WALL_TIME)) {
             parseGcWallTimeTail(context, event, tail);
         }
 
@@ -392,9 +402,18 @@ public class DataReaderUnifiedJvmLogging extends AbstractDataReader {
 
     private void parseGcMemoryTail(ParseContext context, AbstractGCEvent<?> event, String tail) {
         Matcher memoryMatcher = tail != null ? PATTERN_MEMORY.matcher(tail) : null;
+        boolean succ = false;
         if (memoryMatcher != null && memoryMatcher.find()) {
             setMemory(event, memoryMatcher);
+            succ = true;
         } else {
+            memoryMatcher = tail != null ? PATTERN_MEMORY_2.matcher(tail) : null;
+            if (memoryMatcher != null && memoryMatcher.find()) {
+                setMemory(event, memoryMatcher);
+                succ = true;
+            }
+        }
+        if (!succ) {
             getLogger().warning(String.format("Expected only memory in the end of line number %d (line=\"%s\")", in.getLineNumber(), context.getLine()));
         }
     }
